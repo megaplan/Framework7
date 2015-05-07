@@ -17,11 +17,11 @@ app.openPanel = function (panelPosition) {
 
     // Trigger reLayout
     var clientLeft = panel[0].clientLeft;
-    
+
     // Transition End;
     var transitionEndTarget = effect === 'reveal' ? $('.' + app.params.viewsClass) : panel;
     var openedTriggered = false;
-    
+
     function panelTransitionEnd() {
         transitionEndTarget.transitionEnd(function (e) {
             if ($(e.target).is(transitionEndTarget)) {
@@ -51,13 +51,19 @@ app.closePanel = function () {
     activePanel.trigger('close');
     app.allowPanelOpen = false;
 
-    transitionEndTarget.transitionEnd(function () {
+    var closeTO;
+
+    function onPanelClose() {
         if (activePanel.hasClass('active')) return;
+        app.allowPanelOpen = true;
         activePanel.css({display: ''});
         activePanel.trigger('closed');
         $('body').removeClass('panel-closing');
-        app.allowPanelOpen = true;
-    });
+        if (closeTO) clearTimeout(closeTO);
+    }
+
+    transitionEndTarget.transitionEnd(onPanelClose);
+    closeTO = setTimeout(onPanelClose, 500);
 
     $('body').addClass('panel-closing').removeClass('with-panel-' + panelPosition + '-' + effect);
 };
@@ -77,7 +83,7 @@ app.initSwipePanels = function () {
         }
         else return;
     }
-    
+
     var panelOverlay = $('.panel-overlay');
     var isTouched, isMoved, isScrolling, touchesStart = {}, touchStartTime, touchesDiff, translate, opened, panelWidth, effect, direction;
     var views = $('.' + app.params.viewsClass);
@@ -113,7 +119,7 @@ app.initSwipePanels = function () {
         isMoved = false;
         isTouched = true;
         isScrolling = undefined;
-        
+
         touchStartTime = (new Date()).getTime();
         direction = undefined;
     }
@@ -188,7 +194,7 @@ app.initSwipePanels = function () {
         e.preventDefault();
         var threshold = opened ? 0 : -app.params.swipePanelThreshold;
         if (side === 'right') threshold = -threshold;
-        
+
         touchesDiff = pageX - touchesStart.x + threshold;
 
         if (side === 'right') {
