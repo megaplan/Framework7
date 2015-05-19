@@ -10,7 +10,7 @@
  * 
  * Licensed under MIT
  * 
- * Released on: May 1, 2015
+ * Released on: May 19, 2015
  */
 (function () {
 
@@ -87,9 +87,6 @@
             smartSelectPopupCloseText: 'Close',
             smartSelectSearchbar: false,
             smartSelectBackOnSelect: false,
-            // Searchbar
-            searchbarHideDividers: true,
-            searchbarHideGroups: true,
             // Tap Navbar or Statusbar to scroll to top
             scrollTopOnNavbarClick: false,
             scrollTopOnStatusbarClick: false,
@@ -995,7 +992,9 @@
                 overlay: null,
                 ignore: '.searchbar-ignore',
                 customSearch: false,
-                removeDiacritics: false
+                removeDiacritics: false,
+                searchbarHideDividers: true,
+                searchbarHideGroups: true
             };
             params = params || {};
             for (var def in defaults) {
@@ -1302,7 +1301,7 @@
                         }
                     });
         
-                    if (app.params.searchbarHideDividers) {
+                    if (s.params.searchbarHideDividers) {
                         s.searchList.find('.item-divider, .list-group-title').each(function () {
                             var title = $(this);
                             var nextElements = title.nextAll('li');
@@ -1319,7 +1318,7 @@
                             else title.removeClass('hidden-by-searchbar');
                         });
                     }
-                    if (app.params.searchbarHideGroups) {
+                    if (s.params.searchbarHideGroups) {
                         s.searchList.find('.list-group').each(function () {
                             var group = $(this);
                             var ignore = s.params.ignore && group.is(s.params.ignore);
@@ -2561,14 +2560,6 @@
                 }
             }
         
-            // Push state
-            if (app.params.pushState && view.main)  {
-                if (typeof pushState === 'undefined') pushState = true;
-                if (!preloadOnly && history.state && pushState) {
-                    history.back();
-                }
-            }
-        
             // Animation
             function afterAnimation() {
                 app.pageBackCallback('after', view, {
@@ -2684,8 +2675,17 @@
                         }
                     }
                     else {
-                        if (pageToRemove.length) pageToRemove.remove();
-                        if (dynamicNavbar && navbarToRemove.length) {
+                        var removeNavbar = dynamicNavbar && navbarToRemove.length;
+                        if (pageToRemove.length) {
+                            app.pageRemoveCallback(view, pageToRemove[0], 'right');
+                            if (removeNavbar) {
+                                app.navbarRemoveCallback(view, pageToRemove[0], navbar[0], navbarToRemove[0]);
+                            }    
+                            pageToRemove.remove();
+                            if (removeNavbar) navbarToRemove.remove();
+                        }
+                        else if (removeNavbar) {
+                            app.navbarRemoveCallback(view, pageToRemove[0], navbar[0], navbarToRemove[0]);
                             navbarToRemove.remove();
                         } 
                     }
@@ -2766,6 +2766,14 @@
                 var clientLeft = newPage[0].clientLeft;
         
                 animateBack();
+        
+                // Push state
+                if (app.params.pushState && view.main)  {
+                    if (typeof pushState === 'undefined') pushState = true;
+                    if (!preloadOnly && history.state && pushState) {
+                        history.back();
+                    }
+                }
                 return;
             }
         
@@ -2956,8 +2964,8 @@
                 oldPage.removeClass('page-from-center-to-right').addClass('cached');
             }
             else {
-                oldPage.remove();
                 app.pageRemoveCallback(view, oldPage[0], 'right');
+                oldPage.remove();
             }
                 
             newPage.removeClass('page-from-left-to-center page-on-left').addClass('page-on-center');
@@ -2989,8 +2997,10 @@
                     var index = page.index();
                     var pageUrl = page[0].f7PageData && page[0].f7PageData.url;
                     if (pageUrl && view.history.indexOf(pageUrl) < 0 && view.initialPages.indexOf(this) < 0) {
-                        if (page[0].f7RelatedNavbar) $(page[0].f7RelatedNavbar).remove();
+                        app.pageRemoveCallback(view, page[0], 'right');
+                        if (page[0].f7RelatedNavbar && view.params.dynamicNavbar) app.navbarRemoveCallback(view, page[0], undefined, page[0].f7RelatedNavbar);
                         page.remove();
+                        if (page[0].f7RelatedNavbar && view.params.dynamicNavbar) $(page[0].f7RelatedNavbar).remove();
                     }
                 });
             }
@@ -3012,11 +3022,11 @@
                     if (preloadUrl && view.pagesCache[preloadUrl]) {
                         // Load by page name
                         previousPage = $(view.container).find('.page[data-page="' + view.pagesCache[preloadUrl] + '"]');
-                        previousPage.insertBefore(newPage);
+                        if (previousPage.next('.page')[0] !== newPage[0]) previousPage.insertBefore(newPage);
                         if (newNavbar) {
                             previousNavbar = $(view.container).find('.navbar-inner[data-page="' + view.pagesCache[preloadUrl] + '"]');
-                            previousNavbar.insertBefore(newNavbar);
                             if(!previousNavbar || previousNavbar.length === 0) previousNavbar = newNavbar.prev('.navbar-inner.cached');
+                            if (previousNavbar.next('.navbar-inner')[0] !== newNavbar[0]) previousNavbar.insertBefore(newNavbar);
                         }
                     }
                     else {
@@ -3065,13 +3075,13 @@
                 var verticalButtons = params.verticalButtons ? 'modal-buttons-vertical' : '';
                 modalHTML = '<div class="modal ' + noButtons + ' ' + (params.cssClass || '') + '"><div class="modal-inner">' + (titleHTML + textHTML + afterTextHTML) + '</div><div class="modal-buttons ' + verticalButtons + '">' + buttonsHTML + '</div></div>';
             }
-            
+        
             _modalTemplateTempDiv.innerHTML = modalHTML;
         
             var modal = $(_modalTemplateTempDiv).children();
         
             $('body').append(modal[0]);
-            
+        
             // Add events on buttons
             modal.find('.modal-button').each(function (index, el) {
                 $(el).on('click', function (e) {
@@ -3209,7 +3219,7 @@
             if (arguments.length === 1) {
                 // Actions
                 params = target;
-            } 
+            }
             else {
                 // Popover
                 if (app.device.ios) {
@@ -3220,13 +3230,13 @@
                 }
             }
             params = params || [];
-            
+        
             if (params.length > 0 && !$.isArray(params[0])) {
                 params = [params];
             }
             var modalHTML;
             if (toPopover) {
-                var actionsToPopoverTemplate = app.params.modalActionsToPopoverTemplate || 
+                var actionsToPopoverTemplate = app.params.modalActionsToPopoverTemplate ||
                     '<div class="popover actions-popover">' +
                       '<div class="popover-inner">' +
                         '{{#each this}}' +
@@ -3280,7 +3290,7 @@
                 groupSelector = '.actions-modal-group';
                 buttonSelector = '.actions-modal-button';
             }
-            
+        
             var groups = modal.find(groupSelector);
             groups.each(function (index, el) {
                 var groupIndex = index;
@@ -3337,7 +3347,7 @@
                 else {
                     modal.removeClass('popover-on-left popover-on-right popover-on-top popover-on-bottom').css({left: '', top: ''});
                 }
-                    
+        
         
                 var targetWidth = target.outerWidth();
                 var targetHeight = target.outerHeight();
@@ -3390,7 +3400,7 @@
                     if (modalPosition === 'bottom') {
                         modal.addClass('popover-on-bottom');
                     }
-                    
+        
                 }
                 else {
                     if ((modalHeight + modalAngleSize) < targetOffset.top) {
@@ -3413,7 +3423,7 @@
                         else if (modalTop + modalHeight >= windowHeight) {
                             modalTop = windowHeight - modalHeight - 5;
                         }
-                        diff = diff - modalTop;                
+                        diff = diff - modalTop;
                     }
         
                     // Horizontal Position
@@ -3432,7 +3442,7 @@
                         modalAngleLeft = (modalWidth / 2 - modalAngleSize + diff);
                         modalAngleLeft = Math.max(Math.min(modalAngleLeft, modalWidth - modalAngleSize * 2 - 6), 6);
                         modalAngle.css({left: modalAngleLeft + 'px'});
-                            
+        
                     }
                     else if (modalPosition === 'middle') {
                         modalLeft = targetOffset.left - modalWidth - modalAngleSize;
@@ -3447,7 +3457,7 @@
                         modalAngle.css({top: modalAngleTop + 'px'});
                     }
                 }
-                    
+        
         
                 // Apply Styles
                 modal.css({top: modalTop + 'px', left: modalLeft + 'px'});
@@ -3458,7 +3468,7 @@
             modal.on('close', function () {
                 $(window).off('resize', sizePopover);
             });
-            
+        
             if (modal.find('.' + app.params.viewClass).length > 0) {
                 app.sizeNavbars(modal.find('.' + app.params.viewClass)[0]);
             }
@@ -3523,6 +3533,14 @@
                 });
                 return;
             }
+            // do nothing if this modal already shown
+            if (true === modal.data('f7-modal-shown')) {
+                return;
+            }
+            modal.data('f7-modal-shown', true);
+            modal.on('closed', function() {
+               modal.removeData('f7-modal-shown');
+            });
             var isPopover = modal.hasClass('popover');
             var isPopup = modal.hasClass('popup');
             var isLoginScreen = modal.hasClass('login-screen');
@@ -3569,6 +3587,14 @@
             if (typeof modal !== 'undefined' && modal.length === 0) {
                 return;
             }
+            // do nothing if modal does not shown or in closing process
+            if (true !== modal.data('f7-modal-shown') || true === modal.data('f7-modal-closing')) {
+                return;
+            }
+            modal.data('f7-modal-closing', true);
+            modal.once('closed', function() {
+               modal.removeData('f7-modal-closing');
+            });
             var isModal = modal.hasClass('modal');
             var isPopover = modal.hasClass('popover');
             var isPopup = modal.hasClass('popup');
@@ -3580,15 +3606,15 @@
             var overlay = isPopup ? $('.popup-overlay') : $('.modal-overlay');
             if (isPopup){
                 if (modal.length === $('.popup.modal-in').length) {
-                    overlay.removeClass('modal-overlay-visible');    
-                }  
+                    overlay.removeClass('modal-overlay-visible');
+                }
             }
             else if (!isPickerModal) {
                 overlay.removeClass('modal-overlay-visible');
             }
         
             modal.trigger('close');
-            
+        
             // Picker modal body class
             if (isPickerModal) {
                 $('body').removeClass('with-picker-modal');
@@ -3599,7 +3625,7 @@
                 modal.removeClass('modal-in').addClass('modal-out').transitionEnd(function (e) {
                     if (modal.hasClass('modal-out')) modal.trigger('closed');
                     else modal.trigger('opened');
-                    
+        
                     if (isPickerModal) {
                         $('body').removeClass('picker-modal-closing');
                     }
@@ -3646,11 +3672,11 @@
         
             // Trigger reLayout
             var clientLeft = panel[0].clientLeft;
-            
+        
             // Transition End;
             var transitionEndTarget = effect === 'reveal' ? $('.' + app.params.viewsClass) : panel;
             var openedTriggered = false;
-            
+        
             function panelTransitionEnd() {
                 transitionEndTarget.transitionEnd(function (e) {
                     if ($(e.target).is(transitionEndTarget)) {
@@ -3680,13 +3706,19 @@
             activePanel.trigger('close');
             app.allowPanelOpen = false;
         
-            transitionEndTarget.transitionEnd(function () {
+            var closeTO;
+        
+            function onPanelClose() {
                 if (activePanel.hasClass('active')) return;
+                app.allowPanelOpen = true;
                 activePanel.css({display: ''});
                 activePanel.trigger('closed');
                 $('body').removeClass('panel-closing');
-                app.allowPanelOpen = true;
-            });
+                if (closeTO) clearTimeout(closeTO);
+            }
+        
+            transitionEndTarget.transitionEnd(onPanelClose);
+            closeTO = setTimeout(onPanelClose, 500);
         
             $('body').addClass('panel-closing').removeClass('with-panel-' + panelPosition + '-' + effect);
         };
@@ -3706,7 +3738,7 @@
                 }
                 else return;
             }
-            
+        
             var panelOverlay = $('.panel-overlay');
             var isTouched, isMoved, isScrolling, touchesStart = {}, touchStartTime, touchesDiff, translate, opened, panelWidth, effect, direction;
             var views = $('.' + app.params.viewsClass);
@@ -3742,7 +3774,7 @@
                 isMoved = false;
                 isTouched = true;
                 isScrolling = undefined;
-                
+        
                 touchStartTime = (new Date()).getTime();
                 direction = undefined;
             }
@@ -3817,7 +3849,7 @@
                 e.preventDefault();
                 var threshold = opened ? 0 : -app.params.swipePanelThreshold;
                 if (side === 'right') threshold = -threshold;
-                
+        
                 touchesDiff = pageX - touchesStart.x + threshold;
         
                 if (side === 'right') {
@@ -8452,17 +8484,18 @@
                 var month1 = month + 1;
                 var day = date.getDate();
                 var weekDay = date.getDay();
+        
                 return p.params.dateFormat
                     .replace(/yyyy/g, year)
                     .replace(/yy/g, (year + '').substring(2))
                     .replace(/mm/g, month1 < 10 ? '0' + month1 : month1)
-                    .replace(/m/g, month1)
+                    .replace(/m\W+/g, month1 + '$1')
                     .replace(/MM/g, p.params.monthNames[month])
-                    .replace(/M/g, p.params.monthNamesShort[month])
+                    .replace(/M\W+/g, p.params.monthNamesShort[month] + '$1')
                     .replace(/dd/g, day < 10 ? '0' + day : day)
-                    .replace(/d/g, day)
+                    .replace(/d\W+/g, day + '$1')
                     .replace(/DD/g, p.params.dayNames[weekDay])
-                    .replace(/D/g, p.params.dayNamesShort[weekDay]);
+                    .replace(/D\W+/g, p.params.dayNamesShort[weekDay] + '$1');
             }
         
         
@@ -9182,6 +9215,7 @@
         app.calendar = function (params) {
             return new Calendar(params);
         };
+        
 
         /*======================================================
         ************   Notifications   ************
@@ -9591,6 +9625,15 @@
                         el.dom7ElementDataStorage[key] = value;
                     }
                     return this;
+                }
+            },
+            removeData: function(key) {
+                for (var i = 0; i < this.length; i++) {
+                    var el = this[i];
+                    if (el.dom7ElementDataStorage && el.dom7ElementDataStorage[key]) {
+                        el.dom7ElementDataStorage[key] = null;
+                        delete el.dom7ElementDataStorage[key];
+                    }
                 }
             },
             dataset: function () {
@@ -10338,6 +10381,7 @@
         
             // Save Request URL
             xhr.requestUrl = options.url;
+            xhr.requestParameters = options;
         
             // Open XHR
             xhr.open(_method, options.url, options.async, options.user, options.password);
