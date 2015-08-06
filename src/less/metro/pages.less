@@ -1,0 +1,106 @@
+/* === Pages === */
+
+// Pages animations
+@pageDuration: 300ms;
+
+.pages {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+.page {
+    box-sizing: border-box;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background: #fff;
+    .translateX(0);
+    &.cached {
+        display: none;
+    }
+}
+.page-on-left {
+    opacity: 1;
+    .translateX(0);
+}
+.page-on-right {
+    opacity: 0;
+    pointer-events: none;
+    .translateX(100px);
+}
+.page-content {
+    .scrollable();
+    box-sizing: border-box;
+    height: 100%;
+    position: relative;
+    z-index: 1;
+    -ms-touch-action: pan-y;
+    touch-action: pan-y;
+
+    * {
+        -ms-touch-action: pan-y;
+        touch-action: pan-y;
+    }
+}
+//Class that will trigger transition during page custom transitions (like swipe-back)
+.page-transitioning {
+    .transition(@pageDuration);
+}
+// From/to Right To/from Center animations
+.page-from-right-to-center {
+    opacity: 0;
+    left: 100%;
+}
+.page-from-center-to-right {
+    animation: pageFromLeftToCenter @pageDuration forwards @pageDuration;
+}
+// From/to Center To/from Left animations
+.page-from-center-to-left {
+    animation: pageFromCenterToLeft @pageDuration forwards @pageDuration;
+}
+.page-from-left-to-center {
+    opacity: 0;
+    left: -100%;
+}
+
+.page-enter-animation {
+    animation: pageEnterAnimation @pageDuration forwards, pageHideAnimation 20ms forwards @pageDuration;
+    transform-origin: left;
+    transition-timing-function: cubic-bezier(0.1, 0.9, 0.2, 1);
+}
+.page-outer-animation {
+    animation: pageOuterAnimation @pageDuration forwards, pageHideAnimation 20ms forwards @pageDuration;
+    transform-origin: left;
+    transition-timing-function: cubic-bezier(0.1, 0.9, 0.2, 1);
+}
+
+@keyframes pageFromCenterToLeft { from { opacity: 1; } to { opacity: 1; } }
+@keyframes pageFromLeftToCenter { from { opacity: 1; } to { opacity: 1; } }
+
+@keyframes pageOuterAnimation {
+    from {
+        transform: rotateY(0deg);
+    }
+    to {
+        transform: rotateY(45deg);
+    }
+}
+@keyframes pageHideAnimation {
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0;
+    }
+}
+@keyframes pageEnterAnimation {
+    from {
+        transform: rotateY(0deg);
+    }
+    to {
+        transform: rotateY(-30deg);
+    }
+}
